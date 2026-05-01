@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Üretilecek Yemek İçin Malzeme Hesaplama</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #e67e22;
+            --bg: #f4f7f6;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--white);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--secondary);
+            margin-bottom: 30px;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+
+        select, input {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background-color: var(--primary);
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .result-row {
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        .print-btn {
+            margin-top: 20px;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            width: 100%;
+        }
+
+        .print-btn:hover {
+            background-color: #d35400;
+        }
+
+        @media print {
+            .print-btn, .input-group { display: none; }
+            .container { box-shadow: none; border: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Üretilecek Yemek İçin Malzeme Hesaplama</h1>
+    </header>
+
+    <div class="input-group">
+        <div class="field">
+            <label>Yemek Seçin:</label>
+            <select id="yemekSecimi" onchange="hesapla()">
+                </select>
+        </div>
+        <div class="field">
+            <label>Kişi Sayısı:</label>
+            <input type="number" id="kisiSayisi" value="1000" oninput="hesapla()">
+        </div>
+    </div>
+
+    <div id="sonucAlani">
+        <h2 id="secilenYemekBaslik">Yemek: </h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Malzeme Çeşidi</th>
+                    <th>Birim (1 Kişi)</th>
+                    <th>Toplam İhtiyaç</th>
+                </tr>
+            </thead>
+            <tbody id="malzemeListesi">
+                </tbody>
+        </table>
+    </div>
+
+    <button class="print-btn" onclick="window.print()">Yazdır / PDF Kaydet</button>
+</div>
+
+<script>
+    const receteler = {
+        ezogelin: { isim: "Ezogelin Çorbası", malzemeler: [
+            { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Kırmızı mercimek", miktar: 30, birim: "gr" }, { ad: "Pirinç", miktar: 5, birim: "gr" }, { ad: "Bulgur", miktar: 5, birim: "gr" }, { ad: "Kuru soğan", miktar: 5, birim: "gr" }
+        ]},
+        yayla: { isim: "Yayla Çorbası", malzemeler: [
+            { ad: "Yoğurt", miktar: 100, birim: "gr" }, { ad: "Pirinç", miktar: 10, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Nane", miktar: 1, birim: "gr" }
+        ]},
+        domates: { isim: "Domates Çorbası", malzemeler: [
+            { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Kaşar peyniri", miktar: 5, birim: "gr" }, { ad: "Krema", miktar: 5, birim: "ml" }, { ad: "Pul biber", miktar: 1, birim: "gr" }
+        ]},
+        mercimek: { isim: "Kırmızı Mercimek Çorbası", malzemeler: [
+            { ad: "Kırmızı mercimek", miktar: 30, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Kuru soğan", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }
+        ]},
+        catal: { isim: "Çatal Çorbası", malzemeler: [
+            { ad: "Yeşil mercimek", miktar: 10, birim: "gr" }, { ad: "Erişte", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 7, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Soğan", miktar: 5, birim: "gr" }, { ad: "Aşurelik buğday", miktar: 3, birim: "gr" }
+        ]},
+        dugun: { isim: "Düğün Çorbası", malzemeler: [
+            { ad: "Dana eti", miktar: 30, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }
+        ]},
+        kabak: { isim: "Kabak Çorbası", malzemeler: [
+            { ad: "Kabak", miktar: 50, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Patates", miktar: 30, birim: "gr" }
+        ]},
+        andoloz: { isim: "Andoloz Çorbası", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 10, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Pirinç", miktar: 30, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }
+        ]},
+        tavuk: { isim: "Tavuk Çorbası", malzemeler: [
+            { ad: "Derisiz tavuk göğüs", miktar: 30, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Tel şehriye", miktar: 5, birim: "gr" }
+        ]},
+        anadolu: { isim: "Anadolu Çorbası", malzemeler: [
+            { ad: "Pirinç", miktar: 10, birim: "gr" }, { ad: "Bulgur", miktar: 10, birim: "gr" }, { ad: "Kırmızı mercimek", miktar: 20, birim: "gr" }, { ad: "Yeşil mercimek", miktar: 20, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Salça", miktar: 5, birim: "gr" }
+        ]},
+        cesminigar: { isim: "Çeşminigar Çorbası", malzemeler: [
+            { ad: "Kırmızı mercimek", miktar: 30, birim: "gr" }, { ad: "Kuru soğan", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Yumurta sarısı", miktar: 1, birim: "adet" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Limon suyu", miktar: 5, birim: "ml" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }
+        ]},
+        tutmac: { isim: "Tutmaç Çorbası", malzemeler: [
+            { ad: "Erişte", miktar: 7, birim: "gr" }, { ad: "Yeşil mercimek", miktar: 7, birim: "gr" }, { ad: "Soğan", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }
+        ]},
+        sehriye: { isim: "Şehriye Çorbası", malzemeler: [
+            { ad: "Tel şehriye", miktar: 10, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }
+        ]},
+        arabasi: { isim: "Arabaşı Çorbası", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 30, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }
+        ]},
+        mantar: { isim: "Mantar Çorbası", malzemeler: [
+            { ad: "Mantar", miktar: 30, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Krema", miktar: 5, birim: "gr" }
+        ]},
+        patates: { isim: "Patates Çorbası", malzemeler: [
+            { ad: "Patates", miktar: 80, birim: "gr" }, { ad: "Soğan", miktar: 10, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }
+        ]},
+        sebze: { isim: "Sebze Çorbası", malzemeler: [
+            { ad: "Beyaz lahana", miktar: 30, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Patates", miktar: 30, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Krema", miktar: 5, birim: "ml" }
+        ]},
+        ayran_asi: { isim: "Soğuk Ayran Aşı Çorbası", malzemeler: [
+            { ad: "Nohut", miktar: 10, birim: "gr" }, { ad: "Aşurelik buğday", miktar: 10, birim: "gr" }, { ad: "Yoğurt", miktar: 100, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Dereotu", miktar: 1, birim: "adet" }
+        ]},
+        toyga: { isim: "Toyga Çorbası", malzemeler: [
+            { ad: "Aşurelik buğday", miktar: 15, birim: "gr" }, { ad: "Yoğurt", miktar: 100, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Yumurta sarısı", miktar: 1, birim: "adet" }, { ad: "Haşlanmış nohut", miktar: 10, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }
+        ]},
+        mahluta: { isim: "Mahluta Çorbası", malzemeler: [
+            { ad: "Kuru soğan", miktar: 5, birim: "gr" }, { ad: "Kırmızı mercimek", miktar: 20, birim: "gr" }, { ad: "Pirinç", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Pul biber", miktar: 1, birim: "gr" }
+        ]},
+        bulgur: { isim: "Bulgur Çorbası", malzemeler: [
+            { ad: "Bulgur", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 5, birim: "gr" }, { ad: "Çarliston biber", miktar: 5, birim: "gr" }, { ad: "Domates", miktar: 5, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Domates salçası", miktar: 0.5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }
+        ]},
+        safak: { isim: "Şafak Çorbası", malzemeler: [
+            { ad: "Tel şehriye", miktar: 8, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 10, birim: "gr" }, { ad: "Havuç", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 30, birim: "ml" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }
+        ]},
+        alaca: { isim: "Alaca Çorba", malzemeler: [
+            { ad: "Yeşil mercimek", miktar: 10, birim: "gr" }, { ad: "Aşurelik buğday", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }
+        ]},
+        sutlu: { isim: "Sütlü Çorba", malzemeler: [
+            { ad: "Süt", miktar: 100, birim: "ml" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Buğday unu yemeklik", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Şehriye veya pirinç", miktar: 20, birim: "gr" }
+        ]},
+        tarhana: { isim: "Tarhana Çorbası", malzemeler: [
+            { ad: "Hazır tarhana", miktar: 45, birim: "gr" }, { ad: "Salça", miktar: 5, birim: "gr" }, { ad: "Yağ", miktar: 5, birim: "gr" }, { ad: "Un", miktar: 5, birim: "gr" }, { ad: "Nane", miktar: 1, birim: "gr" }, { ad: "Pul biber", miktar: 1, birim: "gr" }
+        ]},
+        bugdayli_yogurt: { isim: "Buğdaylı Yoğurt Çorbası", malzemeler: [
+            { ad: "Aşurelik buğday", miktar: 10, birim: "gr" }, { ad: "Yoğurt", miktar: 100, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Buğday unu yemeklik", miktar: 10, birim: "gr" }, { ad: "Yağ", miktar: 5, birim: "gr" }
+        ]},
+        ankara_tava: { isim: "Ankara Tava", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates", miktar: 20, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Arpa şehriye", miktar: 30, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }
+        ]},
+        bahcevan_kebabi_kis: { isim: "Bahçevan Kebabı (Kış)", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Havuç", miktar: 50, birim: "gr" }, { ad: "Patates", miktar: 50, birim: "gr" }, { ad: "Bezelye", miktar: 30, birim: "gr" }, { ad: "Dana eti", miktar: 70, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0, birim: "gr" }
+        ]},
+        bahcevan_kebabi_yaz: { isim: "Bahçevan Kebabı (Yaz)", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Bezelye", miktar: 30, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Patates", miktar: 50, birim: "gr" }, { ad: "Patlıcan", miktar: 50, birim: "gr" }, { ad: "Dana eti", miktar: 70, birim: "gr" }, { ad: "Tuz", miktar: 0, birim: "gr" }
+        ]},
+        ciftlik_kebabi: { isim: "Çiftlik Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Kabak", miktar: 30, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Bezelye", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Patates", miktar: 50, birim: "gr" }, { ad: "Dana eti", miktar: 70, birim: "gr" }, { ad: "Tuz", miktar: 0, birim: "gr" }
+        ]},
+        cin_usulu_tavuk: { isim: "Çin Usulü Tavuk", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 150, birim: "gr" }, { ad: "Havuç", miktar: 15, birim: "gr" }, { ad: "Kabak (yaz)", miktar: 15, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Soya sosu", miktar: 6, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Susam", miktar: 1, birim: "gr" }
+        ]},
+        coban_kavurma: { isim: "Çoban Kavurma", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Domates", miktar: 30, birim: "gr" }, { ad: "Dana eti", miktar: 150, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        elbasan_tava: { isim: "Elbasan Tava", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Buğday unu", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 200, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı toz biber", miktar: 0.2, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }, { ad: "Kaşar peyniri", miktar: 20, birim: "gr" }
+        ]},
+        et_doner: { isim: "Et Döner", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kekik", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Kuyruk yağı", miktar: 15, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Dana eti", miktar: 150, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Yoğurt", miktar: 20, birim: "gr" }
+        ]},
+        et_haslama: { isim: "Et Haşlama", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 150, birim: "gr" }, { ad: "Patates", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        et_kavurma: { isim: "Et Kavurma", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Dana eti", miktar: 200, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }
+        ]},
+        etli_bezelye: { isim: "Etli Bezelye", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Havuç", miktar: 10, birim: "gr" }, { ad: "Bezelye", miktar: 120, birim: "gr" }, { ad: "Patates", miktar: 20, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }
+        ]},
+        etli_biber_dolmasi: { isim: "Etli Biber Dolması", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" }, { ad: "Zeytinyağı", miktar: 3, birim: "gr" }, { ad: "Dolmalık biber", miktar: 100, birim: "gr" }, { ad: "Domates", miktar: 20, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Biber salçası", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Pirinç", miktar: 30, birim: "gr" }, { ad: "Tuz", miktar: 0.5, birim: "gr" }, { ad: "Dana eti", miktar: 40, birim: "gr" }
+        ]},
+        etli_bugu_kebabi: { isim: "Etli Buğu Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Domates", miktar: 20, birim: "gr" }, { ad: "Bezelye", miktar: 10, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 150, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kaşar peyniri", miktar: 20, birim: "gr" }, { ad: "Un", miktar: 10, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }
+        ]},
+        etli_kuru_fasulye: { isim: "Etli Kuru Fasulye", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kuru fasulye", miktar: 50, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        etli_nohut: { isim: "Etli Nohut", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kuru nohut", miktar: 50, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        etli_patates: { isim: "Etli Patates", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Patates", miktar: 150, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        etli_taze_fasulye: { isim: "Etli Taze/Konserve Fasulye", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Fasulye", miktar: 150, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        firin_kofte: { isim: "Fırın Köfte", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }, { ad: "Domates", miktar: 50, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        firinda_balik: { isim: "Fırında Balık", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Limon", miktar: 50, birim: "gr" }, { ad: "Balık (temizlenmiş)", miktar: 200, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        firinda_tavuk_but: { isim: "Fırında Tavuk But", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı toz biber", miktar: 1, birim: "gr" }, { ad: "Tavuk but (kemikli)", miktar: 250, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        hasanpasa_kofte: { isim: "Hasanpaşa Köfte (Püreli)", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kaşar peyniri", miktar: 20, birim: "gr" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Patates", miktar: 80, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Süt", miktar: 40, birim: "ml" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        hunkar_begendi: { isim: "Hünkar Beğendi", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 1, birim: "gr" }, { ad: "Buğday unu", miktar: 10, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Patlıcan", miktar: 120, birim: "gr" }, { ad: "Dana eti", miktar: 150, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        izmir_kofte: { isim: "İzmir Köfte", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }, { ad: "Domates", miktar: 50, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Patates", miktar: 80, birim: "gr" }
+        ]},
+        kabak_musakka: { isim: "Kabak Musakka", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" }, { ad: "Domates", miktar: 30, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kabak", miktar: 150, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }
+        ]},
+        kadinbudu_kofte: { isim: "Kadınbudu Köfte (Patatesli)", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 70, birim: "gr" }, { ad: "Galeta unu", miktar: 15, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Pirinç", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Patates", miktar: 80, birim: "gr" }
+        ]},
+        karniyarik: { isim: "Karnıyarık", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" }, { ad: "Domates", miktar: 50, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Kuru sarımsak", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Patlıcan", miktar: 150, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Dana eti", miktar: 70, birim: "gr" }
+        ]},
+        kis_turlusu: { isim: "Kış Türlüsü", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Havuç", miktar: 60, birim: "gr" }, { ad: "Patates", miktar: 60, birim: "gr" }, { ad: "Bezelye", miktar: 10, birim: "gr" }, { ad: "Yeşil fasulye", miktar: 20, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 0.5, birim: "gr" }
+        ]},
+        kiymali_bezelye: { isim: "Kıymalı Bezelye", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Bezelye", miktar: 100, birim: "gr" }, { ad: "Patates", miktar: 30, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        kiymali_ispanak: { isim: "Kıymalı Ispanak", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Ispanak", miktar: 150, birim: "gr" }, { ad: "Kuru sarımsak", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Pirinç", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        kiymali_Patates: { isim: "Kıymalı Patates", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "patates", miktar: 150, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Kuru Soğan", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        kiymali_karnabahar: { isim: "Kıymalı Karnabahar", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Karnabahar", miktar: 150, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Kuru Soğan", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        kiymali_pirasa: { isim: "Kıymalı Pırasa", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, 
+            { ad: "Domates salçası", miktar: 10, birim: "gr" }, 
+            { ad: "Pırasa", miktar: 130, birim: "gr" }, 
+            { ad: "Havuç", miktar: 20, birim: "gr" }, 
+            { ad: "Dana eti", miktar: 50, birim: "gr" }, 
+            { ad: "Kuru soğan", miktar: 10, birim: "gr" }, 
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, 
+            { ad: "Karabiber", miktar: 1, birim: "gr" }, 
+            { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        kori_soslu_tavuk: { isim: "Köri Soslu Tavuk", malzemeler: [
+            { ad: "Derisiz tavuk göğüs", miktar: 175, birim: "gr" }, 
+            { ad: "Çarliston biber", miktar: 15, birim: "gr" }, 
+            { ad: "Kapya biber", miktar: 10, birim: "gr" }, 
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, 
+            { ad: "Tuz", miktar: 0.1, birim: "gr" }, 
+            { ad: "Karabiber", miktar: 1, birim: "gr" }, 
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, 
+            { ad: "Köri", miktar: 2, birim: "gr" }
+        ]},
+		macar_gulas: { isim: "Macar Gulaş", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, 
+            { ad: "Domates salçası", miktar: 10, birim: "gr" }, 
+            { ad: "Patates", miktar: 100, birim: "gr" }, 
+            { ad: "Havuç", miktar: 50, birim: "gr" }, 
+            { ad: "Dana eti", miktar: 50, birim: "gr" }, 
+            { ad: "Tuz", miktar: 0.1, birim: "gr" }, 
+            { ad: "Karabiber", miktar: 1, birim: "gr" }, 
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }
+        ]},
+        orman_kebabi: { isim: "Orman Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, 
+            { ad: "Buğday unu", miktar: 5, birim: "gr" }, 
+            { ad: "Havuç", miktar: 30, birim: "gr" }, 
+            { ad: "Karabiber", miktar: 1, birim: "gr" }, 
+            { ad: "Kekik", miktar: 2, birim: "gr" }, 
+            { ad: "Tuz", miktar: 0.1, birim: "gr" }, 
+            { ad: "Bezelye", miktar: 50, birim: "gr" }, 
+            { ad: "Kuru soğan", miktar: 10, birim: "gr" }, 
+            { ad: "Patates", miktar: 50, birim: "gr" }, 
+            { ad: "Dana eti", miktar: 70, birim: "gr" }
+        ]},
+		pastirmali_kuru_fasulye: { isim: "Pastırmalı Kuru Fasulye", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 2, birim: "gr" },
+            { ad: "Domates salçası", miktar: 10, birim: "gr" },
+            { ad: "Kuru fasulye", miktar: 60, birim: "gr" },
+            { ad: "Kuru soğan", miktar: 10, birim: "gr" },
+            { ad: "Pastırma", miktar: 40, birim: "gr" },
+            { ad: "Tuz", miktar: 0.1, birim: "gr" },
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" },
+            { ad: "Karabiber", miktar: 1, birim: "gr" }
+        ]},
+        patates_musakka: { isim: "Patates Musakka", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" },
+            { ad: "Domates", miktar: 30, birim: "gr" },
+            { ad: "Domates salçası", miktar: 10, birim: "gr" },
+            { ad: "Patates", miktar: 150, birim: "gr" },
+            { ad: "Kuru soğan", miktar: 10, birim: "gr" },
+            { ad: "Çarliston biber", miktar: 10, birim: "gr" },
+            { ad: "Dana eti", miktar: 50, birim: "gr" },
+            { ad: "Tuz", miktar: 0.1, birim: "gr" },
+            { ad: "Karabiber", miktar: 1, birim: "gr" },
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }
+        ]},
+        patlican_kebabi: { isim: "Patlıcan Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" },
+            { ad: "Domates", miktar: 30, birim: "gr" },
+            { ad: "Domates salçası", miktar: 5, birim: "gr" },
+            { ad: "Karabiber", miktar: 1, birim: "gr" },
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" },
+            { ad: "Kuru soğan", miktar: 10, birim: "gr" },
+            { ad: "Patlıcan", miktar: 150, birim: "gr" },
+            { ad: "Dana eti", miktar: 70, birim: "gr" },
+            { ad: "Çarliston biber", miktar: 15, birim: "gr" },
+            { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        patlican_musakka: { isim: "Patlıcan Musakka", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" },
+            { ad: "Domates", miktar: 30, birim: "gr" },
+            { ad: "Domates salçası", miktar: 10, birim: "gr" },
+            { ad: "Patlıcan", miktar: 150, birim: "gr" },
+            { ad: "Kuru soğan", miktar: 10, birim: "gr" },
+            { ad: "Çarliston biber", miktar: 10, birim: "gr" },
+            { ad: "Dana eti", miktar: 50, birim: "gr" },
+            { ad: "Tuz", miktar: 0.1, birim: "gr" },
+            { ad: "Karabiber", miktar: 1, birim: "gr" },
+            { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }
+        ]},
+        pilic_topkapi: { isim: "Piliç Topkapı", malzemeler: [
+            { ad: "Açılmış kemiksiz tavuk but", miktar: 200, birim: "gr" },
+            { ad: "Pirinç", miktar: 40, birim: "gr" },
+            { ad: "Tarçın", miktar: 1, birim: "gr" },
+            { ad: "Karabiber", miktar: 1, birim: "gr" },
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" },
+            { ad: "Tuz", miktar: 0.1, birim: "gr" },
+            { ad: "Domates salçası", miktar: 5, birim: "gr" },
+            { ad: "Kuş üzümü", miktar: 1, birim: "gr" }
+        ]},
+		pureli_mitite_kofte: { isim: "Püreli Mitite Köfte", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Patates", miktar: 100, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }
+        ]},
+        rosto_kofte: { isim: "Rosto Köfte (Püreli)", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }, { ad: "Buğday unu", miktar: 5, birim: "gr" }, { ad: "Patates", miktar: 100, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Yumurta", miktar: 1, birim: "adet" }
+        ]},
+        sebzeli_et_kavurma: { isim: "Sebzeli Et Kavurma", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 20, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Havuç", miktar: 30, birim: "gr" }, { ad: "Dana eti", miktar: 120, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Patates", miktar: 30, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }
+        ]},
+        sebzeli_kofte_kebabi: { isim: "Sebzeli Köfte Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 20, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Havuç", miktar: 30, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Patates", miktar: 30, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }
+        ]},
+        soya_soslu_mantarli_tavuk: { isim: "Soya Soslu Mantarlı Tavuk", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 160, birim: "gr" }, { ad: "Mantar", miktar: 40, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Soya", miktar: 6, birim: "gr" }
+        ]},
+        soya_soslu_tavuk: { isim: "Soya Soslu Tavuk", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 175, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Soya", miktar: 6, birim: "gr" }, { ad: "Çarliston biber", miktar: 15, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }
+        ]},
+        sucuklu_kuru_fasulye: { isim: "Sucuklu Kuru Fasulye", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kuru fasulye", miktar: 60, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Sucuk", miktar: 40, birim: "gr" }, { ad: "Tuz", miktar: 0.5, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }
+        ]},
+        sulu_kofte: { isim: "Sulu Köfte", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Galeta unu", miktar: 5, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Kimyon", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Köfte baharatı", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Patates", miktar: 50, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }
+        ]},
+        tas_kebabi: { isim: "Tas Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 20, birim: "gr" }, { ad: "Patates", miktar: 100, birim: "gr" }, { ad: "Dana eti", miktar: 100, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        tatli_aci_soslu_tavuk: { isim: "Tatlı Acı Soslu Tavuk", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 200, birim: "gr" }, { ad: "Soya soyu", miktar: 6, birim: "gr" }, { ad: "Acı sos", miktar: 2, birim: "gr" }, { ad: "Bal", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Susam", miktar: 1, birim: "gr" }
+        ]},
+        tavuk_doner: { isim: "Tavuk Döner", malzemeler: [
+            { ad: "Derili tavuk göğsü", miktar: 150, birim: "gr" }, { ad: "Kuyruk yağı", miktar: 15, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı toz biber", miktar: 1, birim: "gr" }, { ad: "Köri", miktar: 0.02, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        tavuk_fajita: { isim: "Tavuk Fajita", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 175, birim: "gr" }, { ad: "Çarliston biber", miktar: 15, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        tavuk_sote: { isim: "Tavuk Sote", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 160, birim: "gr" }, { ad: "Domates", miktar: 30, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 0.5, birim: "gr" }, { ad: "Karabiber", miktar: 0.5, birim: "gr" }
+        ]},
+        tavuk_sinitzel: { isim: "Tavuk Şinitzel (Püreli)", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 200, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 50, birim: "gr" }, { ad: "Galeta unu", miktar: 50, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Patates", miktar: 100, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        tavuk_sis: { isim: "Tavuk Şiş", malzemeler: [
+            { ad: "Derisiz tavuk göğsü", miktar: 150, birim: "gr" }, { ad: "Domates", miktar: 30, birim: "gr" }, { ad: "Çarliston biber", miktar: 20, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        tavuklu_bugu_kebabi: { isim: "Tavuklu Buğu Kebabı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Domates", miktar: 20, birim: "gr" }, { ad: "Bezelye", miktar: 10, birim: "gr" }, { ad: "Kapya biber", miktar: 10, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Dana eti", miktar: 150, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kaşar peyniri", miktar: 20, birim: "gr" }, { ad: "Un", miktar: 10, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }
+        ]},
+        yumurtali_ispanak: { isim: "Yumurtalı Ispanak", malzemeler: [
+            { ad: "Ispanak", miktar: 175, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+		arpa_sehriye_pilavi: { isim: "Arpa Şehriye Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Şehriye", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        bahar_pilavi: { isim: "Bahar Pilavı", malzemeler: [
+            { ad: "Pirinç", miktar: 50, birim: "gr" }, { ad: "Bezelye", miktar: 5, birim: "gr" }, { ad: "Havuç", miktar: 5, birim: "gr" }, { ad: "Mısır", miktar: 5, birim: "gr" }, { ad: "Dereotu", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 5, birim: "gr" }
+        ]},
+        barbunya_piyazi: { isim: "Barbunya Piyazı", malzemeler: [
+            { ad: "Barbunya", miktar: 40, birim: "gr" }, { ad: "Kuru soğan", miktar: 10, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Zeytinyağı", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Toz kırmızıbiber", miktar: 0.2, birim: "gr" }
+        ]},
+        bezelyeli_pirinc_pilavi: { isim: "Bezelyeli Pirinç Pilavı", malzemeler: [
+            { ad: "Bezelye", miktar: 10, birim: "gr" }, { ad: "Pirinç", miktar: 60, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        bolonez_soslu_makarna: { isim: "Bolonez Soslu Makarna", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Makarna çeşitleri", miktar: 50, birim: "gr" }, { ad: "Dana eti (kemiksiz)", miktar: 40, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        borek: { isim: "Börek", malzemeler: [
+            { ad: "Hazır", miktar: 1, birim: "adet" }
+        ]},
+        bugday_salatasi: { isim: "Buğday Salatası", malzemeler: [
+            { ad: "Aşurelik buğday", miktar: 60, birim: "gr" }, { ad: "Kapya biber", miktar: 15, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Dereotu", miktar: 1, birim: "adet" }, { ad: "Marul", miktar: 1, birim: "adet" }, { ad: "Zeytinyağı", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        fasulye_piyazi: { isim: "Fasulye Piyazı", malzemeler: [
+            { ad: "Kuru fasulye", miktar: 40, birim: "gr" }, { ad: "Soğan", miktar: 10, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Zeytinyağı", miktar: 10, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Kırmızı toz biber", miktar: 0.2, birim: "gr" }
+        ]},
+        firin_makarna: { isim: "Fırın Makarna", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Buğday unu", miktar: 10, birim: "gr" }, { ad: "Kaşar peyniri", miktar: 20, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Makarna çeşitleri", miktar: 40, birim: "gr" }, { ad: "Süt", miktar: 50, birim: "ml" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Tereyağı", miktar: 5, birim: "gr" }
+        ]},
+        kisir: { isim: "Kısır", malzemeler: [
+            { ad: "Zeytinyağı", miktar: 10, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Biber salçası", miktar: 5, birim: "gr" }, { ad: "Nar ekşisi", miktar: 10, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 0.5, birim: "gr" }, { ad: "Köftelik bulgur", miktar: 40, birim: "gr" }, { ad: "Marul", miktar: 1, birim: "adet" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kırmızı toz biber", miktar: 0.2, birim: "gr" }
+        ]},
+        kus_uzumlu_pirinc_pilavi: { isim: "Kuş Üzümlü Pirinç Pilavı", malzemeler: [
+            { ad: "Pirinç", miktar: 60, birim: "gr" }, { ad: "Kuş üzümü", miktar: 10, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        manti: { isim: "Mantı", malzemeler: [
+            { ad: "Mantı", miktar: 100, birim: "gr" }, { ad: "Yoğurt", miktar: 100, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Pul biber", miktar: 1, birim: "gr" }
+        ]},
+        melek_pilavi: { isim: "Melek Pilavı", malzemeler: [
+            { ad: "Havuç", miktar: 10, birim: "gr" }, { ad: "Mantar", miktar: 10, birim: "gr" }, { ad: "Bezelye", miktar: 5, birim: "gr" }, { ad: "Pirinç", miktar: 50, birim: "gr" }, { ad: "Dana eti", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }
+        ]},
+        muceddere: { isim: "Mercimekli Bulgur Pilavı (Müceddere)", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Bulgur", miktar: 40, birim: "gr" }, { ad: "Yeşil mercimek", miktar: 10, birim: "gr" }, { ad: "Karabiber", miktar: 0.5, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }
+        ]},
+        misirli_pirinc_pilavi: { isim: "Mısırlı Pirinç Pilavı", malzemeler: [
+            { ad: "Pirinç", miktar: 60, birim: "gr" }, { ad: "Mısır", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        napoliten_soslu_makarna: { isim: "Napoliten Soslu Makarna", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Buğday unu", miktar: 5, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Makarna çeşitleri", miktar: 50, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        nohutlu_bulgur_pilavi: { isim: "Nohutlu Bulgur Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Bulgur", miktar: 40, birim: "gr" }, { ad: "Nohut", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        nohutlu_pirinc_pilavi: { isim: "Nohutlu Pirinç Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Pirinç", miktar: 60, birim: "gr" }, { ad: "Nohut", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        ozbek_pilavi: { isim: "Özbek Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Kuru soğan", miktar: 30, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Patates", miktar: 30, birim: "gr" }, { ad: "Pirinç", miktar: 60, birim: "gr" }, { ad: "Dana eti", miktar: 40, birim: "gr" }, { ad: "Kuru sarımsak", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        penne_arabiata: { isim: "Penne Arabiata Makarna", malzemeler: [
+            { ad: "Makarna", miktar: 40, birim: "gr" }, { ad: "Dilimlenmiş siyah zeytin", miktar: 10, birim: "gr" }, { ad: "Dilimlenmiş yeşil zeytin", miktar: 10, birim: "gr" }, { ad: "Acı sos", miktar: 3, birim: "gr" }, { ad: "Domates salçası", miktar: 10, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Pul biber", miktar: 1, birim: "gr" }
+        ]},
+        peynirli_makarna: { isim: "Peynirli Makarna", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Beyaz peynir", miktar: 30, birim: "gr" }, { ad: "Makarna", miktar: 50, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        sade_bulgur_pilavi: { isim: "Sade Bulgur Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Bulgur", miktar: 50, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        sade_makarna: { isim: "Sade Makarna", malzemeler: [
+            { ad: "Makarna", miktar: 50, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        sade_pirinc_pilavi: { isim: "Sade Pirinç Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Pirinç", miktar: 65, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        sebzeli_bulgur_pilavi: { isim: "Sebzeli Bulgur Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Bulgur", miktar: 50, birim: "gr" }, { ad: "Çarliston biber", miktar: 15, birim: "gr" }, { ad: "Domates", miktar: 25, birim: "gr" }, { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Biber salçası", miktar: 5, birim: "gr" }, { ad: "Kuru nane", miktar: 1, birim: "gr" }, { ad: "Pul biber", miktar: 1, birim: "gr" }, { ad: "Kırmızı toz biber", miktar: 0.5, birim: "gr" }, { ad: "Kuru soğan", miktar: 20, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        sehriyeli_pirinc_pilavi: { isim: "Şehriyeli Pirinç Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Pirinç", miktar: 50, birim: "gr" }, { ad: "Arpa veya tel şehriye", miktar: 5, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }
+        ]},
+        tel_sehriyeli_bulgur_pilavi: { isim: "Tel Şehriyeli Bulgur Pilavı", malzemeler: [
+            { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }, { ad: "Tereyağı", miktar: 2, birim: "gr" }, { ad: "Bulgur", miktar: 40, birim: "gr" }, { ad: "Tel şehriye", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        yesil_mercimek_salatasi: { isim: "Yeşil Mercimek Salatası", malzemeler: [
+            { ad: "Yeşil mercimek", miktar: 40, birim: "gr" }, { ad: "Kapya biber", miktar: 15, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Dereotu", miktar: 1, birim: "adet" }, { ad: "Marul", miktar: 1, birim: "adet" }, { ad: "Zeytinyağı", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }
+        ]},
+        zeytinyagli_pirasa: { isim: "Zeytinyağlı Pırasa", malzemeler: [
+            { ad: "Domates salçası", miktar: 5, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Pırasa", miktar: 150, birim: "gr" }, { ad: "Pirinç", miktar: 10, birim: "gr" }, { ad: "Tuz", miktar: 0.1, birim: "gr" }, { ad: "Zeytinyağı", miktar: 10, birim: "gr" }
+        ]},
+		asure: { isim: "Aşure", malzemeler: [
+            { ad: "Kuru incir", miktar: 15, birim: "gr" }, { ad: "Kuru kayısı", miktar: 15, birim: "gr" }, { ad: "Kuru üzüm", miktar: 15, birim: "gr" }, { ad: "Kuru fasulye", miktar: 5, birim: "gr" }, { ad: "Nohut", miktar: 5, birim: "gr" }, { ad: "Aşurelik buğday", miktar: 15, birim: "gr" }, { ad: "Toz şeker", miktar: 30, birim: "gr" }, { ad: "Bütün fındık", miktar: 5, birim: "gr" }
+        ]},
+        ayran: { isim: "Ayran", malzemeler: [
+            { ad: "Hazır paketli", miktar: 170, birim: "ml" }
+        ]},
+        baklava: { isim: "Baklava", malzemeler: [
+            { ad: "Hazır", miktar: 125, birim: "gr" }
+        ]},
+        cacik: { isim: "Cacık (yaz/kış)", malzemeler: [
+            { ad: "Yoğurt", miktar: 200, birim: "gr" }, { ad: "Salatalık (yaz)", miktar: 50, birim: "gr" }, { ad: "Dereotu(kış)", miktar: 1, birim: "adet" }, { ad: "Tuz", miktar: 0.5, birim: "gr" }, { ad: "Zeytinyağı", miktar: 3, birim: "gr" }, { ad: "Kuru nane", miktar: 0.5, birim: "gr" }
+        ]},
+        coban_salata: { isim: "Çoban Salata", malzemeler: [
+            { ad: "Domates", miktar: 100, birim: "gr" }, { ad: "Salatalık", miktar: 50, birim: "gr" }, { ad: "Çarliston biber", miktar: 10, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }
+        ]},
+        findikli_incir_tatlisi: { isim: "Fındıklı İncir Tatlısı", malzemeler: [
+            { ad: "Kuru incir", miktar: 20, birim: "gr" }, { ad: "Kırık fındık", miktar: 5, birim: "gr" }, { ad: "Süt", miktar: 100, birim: "ml" }, { ad: "Şeker", miktar: 30, birim: "gr" }
+        ]},
+        havuc_tarator: { isim: "Havuç Tarator (Havuç Borani)", malzemeler: [
+            { ad: "Havuç", miktar: 100, birim: "gr" }, { ad: "Yoğurt + süzme yoğurt", miktar: 150, birim: "gr" }, { ad: "Tuz", miktar: 0.5, birim: "gr" }, { ad: "Kuru sarımsak (havuç borani)", miktar: 1, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 5, birim: "gr" }
+        ]},
+        haydari: { isim: "Haydari", malzemeler: [
+            { ad: "Kuru nane", miktar: 0.5, birim: "gr" }, { ad: "Tuz", miktar: 0.5, birim: "gr" }, { ad: "Süzme yoğurt", miktar: 150, birim: "gr" }, { ad: "Zeytinyağı", miktar: 5, birim: "gr" }, { ad: "Kırmızı pul biber", miktar: 0.5, birim: "gr" }
+        ]},
+        hazir_helva: { isim: "Hazır Helva (Paketli)", malzemeler: [
+            { ad: "Hazır", miktar: 1, birim: "paket" }
+        ]},
+        irmik_helva: { isim: "İrmik Helva", malzemeler: [
+            { ad: "İrmik", miktar: 25, birim: "gr" }, { ad: "Kırık fındık", miktar: 5, birim: "gr" }, { ad: "Ayçiçek yağı", miktar: 10, birim: "gr" }, { ad: "Tereyağı", miktar: 5, birim: "gr" }, { ad: "Şeker", miktar: 30, birim: "gr" }
+        ]},
+        kadayif: { isim: "Kadayıf", malzemeler: [
+            { ad: "Hazır", miktar: 125, birim: "gr" }
+        ]},
+        kalburabasti: { isim: "Kalburabastı", malzemeler: [
+            { ad: "Hazır kalburabastı", miktar: 30, birim: "gr" }, { ad: "Şeker", miktar: 50, birim: "gr" }
+        ]},
+        karisik_hosaf: { isim: "Karışık Hoşaf", malzemeler: [
+            { ad: "Kuru kayısı", miktar: 20, birim: "gr" }, { ad: "Kuru üzüm", miktar: 10, birim: "gr" }, { ad: "Şeker", miktar: 30, birim: "gr" }
+        ]},
+        karisik_tursu: { isim: "Karışık Turşu", malzemeler: [
+            { ad: "Karışık Turşu", miktar: 80, birim: "gr" }
+        ]},
+        keskul: { isim: "Keşkül", malzemeler: [
+            { ad: "Nişasta", miktar: 3, birim: "gr" }, { ad: "Süt", miktar: 120, birim: "ml" }, { ad: "Toz şeker", miktar: 40, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Kırık fındık", miktar: 5, birim: "gr" }
+        ]},
+        komposto: { isim: "Komposto", malzemeler: [
+            { ad: "Taze meyve", miktar: 50, birim: "gr" }, { ad: "Şeker", miktar: 40, birim: "gr" }
+        ]},
+        mevsim_salata: { isim: "Mevsim Salata", malzemeler: [
+            { ad: "Marul", miktar: 1, birim: "adet" }, { ad: "Mor lahana", miktar: 25, birim: "gr" }, { ad: "Havuç", miktar: 20, birim: "gr" }, { ad: "Mısır", miktar: 5, birim: "gr" }
+        ]},
+        meyve: { isim: "Meyve", malzemeler: [
+            { ad: "Meyve", miktar: 150, birim: "gr" }
+        ]},
+        patates_salatasi: { isim: "Patates Salatası", malzemeler: [
+            { ad: "Patates", miktar: 125, birim: "gr" }, { ad: "Maydanoz", miktar: 1, birim: "adet" }, { ad: "Soğan", miktar: 20, birim: "gr" }, { ad: "Marul", miktar: 1, birim: "adet" }, { ad: "Kırmızı pul biber", miktar: 1, birim: "gr" }, { ad: "Karabiber", miktar: 1, birim: "gr" }, { ad: "Tuz", miktar: 1, birim: "gr" }
+        ]},
+        pembe_sultan: { isim: "Pembe Sultan", malzemeler: [
+            { ad: "Mor lahana", miktar: 80, birim: "gr" }, { ad: "Yoğurt + süzme yoğurt", miktar: 100, birim: "gr" }, { ad: "Limon suyu", miktar: 30, birim: "ml" }
+        ]},
+        profiterol: { isim: "Profiterol", malzemeler: [
+            { ad: "Hazır profiterol", miktar: 10, birim: "gr" }, { ad: "Çikolata sos", miktar: 25, birim: "gr" }, { ad: "Süt", miktar: 100, birim: "ml" }, { ad: "Toz krema", miktar: 20, birim: "gr" }
+        ]},
+        puding: { isim: "Puding", malzemeler: [
+            { ad: "Toz puding", miktar: 15, birim: "gr" }, { ad: "Süt", miktar: 120, birim: "ml" }
+        ]},
+        rus_salatasi: { isim: "Rus Salatası", malzemeler: [
+            { ad: "Akdeniz garnitürü", miktar: 80, birim: "gr" }, { ad: "Mayonez", miktar: 100, birim: "gr" }
+        ]},
+        sutlac: { isim: "Sütlaç", malzemeler: [
+            { ad: "Süt", miktar: 120, birim: "ml" }, { ad: "Şeker", miktar: 30, birim: "gr" }, { ad: "Yumurta", miktar: 1, birim: "adet" }, { ad: "Pirinç", miktar: 10, birim: "gr" }, { ad: "Nişasta", miktar: 3, birim: "gr" }
+        ]},
+        sekerepare: { isim: "Şekerpare", malzemeler: [
+            { ad: "Hazır şekerpare", miktar: 30, birim: "gr" }, { ad: "Şeker", miktar: 50, birim: "gr" }
+        ]},
+    };
+
+    function init() {
+        const select = document.getElementById('yemekSecimi');
+        for (let key in receteler) {
+            let opt = document.createElement('option');
+            opt.value = key;
+            opt.innerHTML = receteler[key].isim;
+            select.appendChild(opt);
+        }
+        hesapla();
+    }
+
+    function hesapla() {
+        const yemekKey = document.getElementById('yemekSecimi').value;
+        const kisi = document.getElementById('kisiSayisi').value || 0;
+        const secilenRecete = receteler[yemekKey];
+        
+        document.getElementById('secilenYemekBaslik').innerText = "Yemek: " + secilenRecete.isim + " (" + kisi + " Kişilik)";
+        
+        const listeGovdesi = document.getElementById('malzemeListesi');
+        listeGovdesi.innerHTML = "";
+
+        secilenRecete.malzemeler.forEach(item => {
+            let toplam = (item.miktar * kisi);
+            let birimGosterim = item.birim;
+            
+            if (birimGosterim === "gr" && toplam >= 1000) {
+                toplam = (toplam / 1000).toFixed(2);
+                birimGosterim = "kg";
+            } else if (birimGosterim === "ml" && toplam >= 1000) {
+                toplam = (toplam / 1000).toFixed(2);
+                birimGosterim = "lt";
+            } else if (birimGosterim === "gr" && (toplam % 1 !== 0)) {
+                toplam = toplam.toFixed(1);
+            }
+
+            const row = `<tr>
+                <td>${item.ad}</td>
+                <td>${item.miktar} ${item.birim}</td>
+                <td class="result-row">${toplam} ${birimGosterim}</td>
+            </tr>`;
+            listeGovdesi.innerHTML += row;
+        });
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
