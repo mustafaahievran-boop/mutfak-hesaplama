@@ -125,7 +125,10 @@
     <header>
         <h1>Üretilecek Yemek İçin Malzeme Hesaplama</h1>
     </header>
-
+<div class="field">
+    <label>Yemek Ara:</label>
+    <input type="text" id="aramaKutusu" placeholder="Yemek adı yazın (Örn: ank)..." oninput="listeyiFiltrele()" style="border: 2px solid #e67e22; background-color: #fffaf5;">
+</div>
     <div class="input-group">
         <div class="field">
             <label>Yemek Seçin:</label>
@@ -653,7 +656,40 @@
         }
         hesapla();
     }
+// Arama kutusuna yazıldığında listeyi süzer
+function listeyiFiltrele() {
+    const aramaTermi = document.getElementById('aramaKutusu').value.toLowerCase();
+    const select = document.getElementById('yemekSecimi');
+    
+    // Select kutusunu temizle
+    select.innerHTML = "";
+    
+    let ilkBulunan = null;
 
+    for (let key in receteler) {
+        if (receteler[key].isim.toLowerCase().includes(aramaTermi)) {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.innerText = receteler[key].isim;
+            select.appendChild(opt);
+            
+            if (!ilkBulunan) ilkBulunan = key;
+        }
+    }
+
+    // Arama sonucunda yemek bulunduysa otomatik olarak hesapla
+    if (ilkBulunan) {
+        select.value = ilkBulunan;
+        hesapla();
+    } else {
+        document.getElementById('malzemeListesi').innerHTML = "<tr><td colspan='3'>Eşleşen yemek bulunamadı.</td></tr>";
+    }
+}
+
+// Sayfa ilk açıldığında listeyi doldurması için mevcut window.onload'u bununla güncelleyin:
+window.onload = function() {
+    listeyiFiltrele();
+};
     function hesapla() {
         const yemekKey = document.getElementById('yemekSecimi').value;
         const kisi = document.getElementById('kisiSayisi').value || 0;
