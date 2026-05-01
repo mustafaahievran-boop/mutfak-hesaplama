@@ -38,12 +38,17 @@
             padding-bottom: 10px;
         }
 
-        .input-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+.input-group {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap; /* Bu satır ekran daralınca öğeleri alta atar */
+}
+
+.input-item {
+    flex: 1;
+    min-width: 250px; /* Bu satır belli bir genişliğin altına inince alta geçmesini sağlar */
+}
 
         .field {
             display: flex;
